@@ -11,7 +11,7 @@
       path:
         files: '/var/test/apache/files'
   tasks:
-    - name: Create ngnix folders
+    - name: Create ngnix folders #Creating directories for mounting them into docker containers
       file: 
         name: "{{ item }}"
         state: directory 
@@ -22,7 +22,7 @@
         - "{{ apache.path.files}}"
         - "{{ nginx.path.configs}}"
     
-    - name: Copy files
+    - name: Copy files #Coping files (index.html and nginx config file) into created directories for future coping them into containers
       copy: 
         src: "{{ item.source }}"
         dest: "{{ item.destination }}"
@@ -33,19 +33,19 @@
         - { source: "roles/apache/files/index.html", destination: "{{ apache.path.files}}" }
         - { source: "roles/nginx/files/test_web.conf", destination: "{{ nginx.path.configs}}" }
 
-    - name: Create Network
+    - name: Create Network #Creating network for connecting containers
       docker_network:
         name: test_network
         ipam_options:
           subnet: '172.18.0.0/24'
           gateway: 172.18.0.1
 
-    - name: Pull nginx image
+    - name: Pull nginx image #Pulling nginx docker image
       docker_image:
         name: nginx
         source: pull
 
-    - name: Start nginx in docker
+    - name: Start nginx in docker #Starting nginx docker container with static IP and Port forwarding. Also mounting volume with nginx config
       docker_container:
         name: nginx-test
         image: nginx
@@ -59,12 +59,12 @@
         volumes:
           - "{{ nginx.path.configs}}:/etc/nginx/conf.d/"
 
-    - name: Pull apache image
+    - name: Pull apache image #Pulling apache2 docker image
       docker_image:
         name: httpd
         source: pull
 
-    - name: Start apache in docker
+    - name: Start apache in docker #Starting apache2 docker container with static IP and Port forwarding. Also mounting volume with index.html
       docker_container:
         name: apache-test
         image: httpd
