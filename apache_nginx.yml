@@ -1,0 +1,79 @@
+---
+- name: Setup nginx & apache in docker
+  hosts:
+   - localhost
+  become: yes
+  vars:
+    nginx:
+      path:
+        configs: '/var/test/nginx/configs'
+    apache:
+      path:
+        files: '/var/test/apache/files'
+  tasks:
+    - name: Create ngnix folders
+      file: 
+        name: "{{ item }}"
+        state: directory 
+        mode: 0755 
+        owner: root 
+        group: root
+      with_items:
+        - "{{ apache.path.files}}"
+        - "{{ nginx.path.configs}}"
+    
+    - name: Copy files
+      copy: 
+        src: "{{ item.source }}"
+        dest: "{{ item.destination }}"
+        owner: root 
+        group: root
+        mode: 0644
+      loop:
+        - { source: "roles/apache/files/index.html", destination: "{{ apache.path.files}}" }
+        - { source: "roles/nginx/files/test_web.conf", destination: "{{ nginx.path.configs}}" }
+
+    - name: Create Network
+      docker_network:
+        name: test_network
+        ipam_options:
+          subnet: '172.18.0.0/24'
+          gateway: 172.18.0.1
+
+    - name: Pull nginx image
+      docker_image:
+        name: nginx
+        source: pull
+
+    - name: Start nginx in docker
+      docker_container:
+        name: nginx-test
+        image: nginx
+        state: started
+        restart: yes
+        networks:
+        - name: test_network
+          ipv4_address: 172.18.0.5
+        ports:
+          - '8080:80'
+        volumes:
+          - "{{ nginx.path.configs}}:/etc/nginx/conf.d/"
+
+    - name: Pull apache image
+      docker_image:
+        name: httpd
+        source: pull
+
+    - name: Start apache in docker
+      docker_container:
+        name: apache-test
+        image: httpd
+        state: started
+        restart: yes
+        networks:
+        - name: test_network
+          ipv4_address: 172.18.0.6
+        ports:
+          - '8081:80'
+        volumes:
+          - "{{ apache.path.files}}:/usr/local/apache2/htdocs"
